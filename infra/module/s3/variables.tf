@@ -5,3 +5,7 @@ variable "bucket_name" {
 variable "tags" {
   type = object({})
 }
+
+variable "website_relative_path" {
+  type = string
+}

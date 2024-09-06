@@ -13,9 +13,9 @@ terraform {
 module "S3Website" {
   source = "./module/s3"
 
-  bucket_name = "davidarevalo.dev"
+  bucket_name = var.bucket_name
 
-  tags = {
-    "Environment" = "Dev"
-  }
+  website_relative_path = var.website_relative_path
+
+  tags = var.tags
 }
