@@ -21,11 +21,40 @@ module "public_s3" {
     index_document = "index.html"
   }
 
+   logging = {
+    target_bucket = var.logs_bucket_id
+    target_prefix = "access-logs/"
+  }
+
+
   tags = var.tags
 }
 
-resource "aws_s3_bucket_policy" "s3_public_policy" {
-  bucket = module.public_s3.s3_bucket_id
+module "redirect" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "4.1.2"
+  bucket  = "www.${var.bucket_name}"
+
+  force_destroy            = true
+  object_lock_enabled      = false
+  control_object_ownership = true
+
+  block_public_acls       = false
+  ignore_public_acls      = false
+  block_public_policy     = false
+  restrict_public_buckets = false
+
+  tags = var.tags
+
+  website = {
+    redirect_all_requests_to = {
+      host_name = var.bucket_name
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "s3_redirect_public_policy" {
+  bucket = module.redirect.s3_bucket_id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -35,7 +64,7 @@ resource "aws_s3_bucket_policy" "s3_public_policy" {
         Effect    = "Allow"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "arn:aws:s3:::${var.bucket_name}/*"
+        Resource  = "arn:aws:s3:::www.${var.bucket_name}/*"
       }
     ]
   })

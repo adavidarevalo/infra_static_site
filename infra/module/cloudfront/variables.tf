@@ -13,3 +13,7 @@ variable "s3_bucket_id" {
 variable "bucket_regional_domain_name" {
   type = string
 }
+
+variable "certificate_arn" {
+  type = string
+}

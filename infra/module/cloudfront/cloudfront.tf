@@ -1,35 +1,40 @@
 resource "aws_cloudfront_distribution" "s3_distribution" {
   origin {
-    domain_name = "${var.s3_bucket_id}.s3.amazonaws.com"
-    origin_id   = "S3-${var.s3_bucket_id}"
+    domain_name = var.bucket_regional_domain_name
+    origin_id   = "S3-Origin"
 
-    s3_origin_config {
+     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.origin_access_identity.cloudfront_access_identity_path
     }
   }
+
+    web_acl_id = aws_wafv2_web_acl.cloudfront_acl.arn
+
+  aliases             = [var.domain, "*.${var.domain}"] 
 
   enabled             = true
   is_ipv6_enabled      = true
   default_root_object = "index.html"
 
   default_cache_behavior {
-    target_origin_id = "S3-${var.s3_bucket_id}"
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-Origin"
 
     viewer_protocol_policy = "redirect-to-https"
 
-    allowed_methods = ["GET", "HEAD"]
-    cached_methods  = ["GET", "HEAD"]
+    min_ttl = 0
+    default_ttl = 3600
+    max_ttl = 86400
 
     forwarded_values {
       query_string = false
+
       cookies {
         forward = "none"
       }
     }
 
-    min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
   }
 
   price_class = "PriceClass_100"
@@ -41,9 +46,12 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn = var.certificate_arn
+    ssl_support_method  = "sni-only"
   }
+
 }
+
 
 resource "aws_cloudfront_origin_access_identity" "origin_access_identity" {
   comment = "Access Identity for S3 bucket"
@@ -53,17 +61,19 @@ resource "aws_s3_bucket_policy" "s3_public_policy" {
   bucket = var.s3_bucket_id
 
   policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = {
-          AWS = aws_cloudfront_origin_access_identity.origin_access_identity.iam_arn
-        }
-        Action    = "s3:GetObject"
-        Resource  = "arn:aws:s3:::${var.domain}/*"
-      }
-    ]
-  })
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadForGetBucketObjects",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${aws_cloudfront_origin_access_identity.origin_access_identity.id}"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::${var.domain}/*"
+    }
+  ]
 }
+)
+}
+

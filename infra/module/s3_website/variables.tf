@@ -9,3 +9,7 @@ variable "tags" {
 variable "website_relative_path" {
   type = string
 }
+
+variable "logs_bucket_id" {
+  type = string
+}
